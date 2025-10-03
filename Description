@@ -1,0 +1,8 @@
+This project implements a serverless solution for mass mailing using various AWS services. The key services include:
+Amazon S3: Utilized for efficient storage of email content and recipient lists.
+AWS Identity and Access Management (IAM): Configured to securely manage user permissions and access controls, ensuring proper authentication.
+AWS Lambda: Powers the serverless execution of the email sending logic, enabling scalable and efficient email dispatch without the need for server management.
+Amazon Simple Email Service (SES): Handles the actual sending of emails, offering a reliable and scalable solution for managing sender and recipient email addresses.
+
+This project demonstrates the capabilities of serverless architecture in automating mass email workflows while leveraging the flexibility and scalability of AWS.
+Tech Stack: Python 3.9, AWS Lambda, S3, SES, IAM 2024
