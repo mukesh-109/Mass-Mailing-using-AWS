@@ -1,0 +1,52 @@
+# Import AWS SDK for Python
+import boto3  # Allows interaction with AWS services
+import os    # To get environment variables
+import csv   # To read CSV files
+
+# ------------------------------
+# Initialize AWS clients
+# ------------------------------
+s3_client = boto3.client('s3')  # Client to interact with Amazon S3
+ses_client = boto3.client('ses')  # Client to send emails via Amazon SES
+
+# ------------------------------
+# Lambda environment variables
+# ------------------------------
+BUCKET_NAME = os.environ.get('BUCKET_NAME')          # S3 bucket where files are stored
+RECIPIENT_FILE = os.environ.get('RECIPIENT_FILE')    # CSV file with recipient emails
+EMAIL_BODY_FILE = os.environ.get('EMAIL_BODY_FILE')  # Text file containing email content
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL')        # Verified sender email in SES
+EMAIL_SUBJECT = os.environ.get('EMAIL_SUBJECT', 'Test Email')  # Subject of the email
+
+# ------------------------------
+# Lambda handler
+# ------------------------------
+def lambda_handler(event, context):
+    # Step 1: Get email body from S3
+    body_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=EMAIL_BODY_FILE)
+    email_body = body_obj['Body'].read().decode('utf-8')  # Read content as string
+    print(f"Email body loaded: {email_body[:50]}...")  # Print first 50 chars for verification
+
+    # Step 2: Get recipients list from S3
+    recipients_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=RECIPIENT_FILE)
+    recipients_csv = recipients_obj['Body'].read().decode('utf-8').splitlines()
+    recipients = [row[0] for row in csv.reader(recipients_csv)]  # List of emails
+    print(f"Recipients loaded: {recipients}")
+
+    # Step 3: Send email via SES to each recipient
+    for recipient in recipients:
+        response = ses_client.send_email(
+            Source=SENDER_EMAIL,
+            Destination={'ToAddresses': [recipient]},
+            Message={
+                'Subject': {'Data': EMAIL_SUBJECT},
+                'Body': {'Text': {'Data': email_body}}
+            }
+        )
+        print(f"Email sent to {recipient}, Message ID: {response['MessageId']}")
+
+    # Step 4: Return success
+    return {
+        'statusCode': 200,
+        'body': f"Emails sent to {len(recipients)} recipients."
+    }
