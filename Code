@@ -1,0 +1,40 @@
+import boto3
+import os
+import csv
+
+# Initialize AWS clients
+s3_client = boto3.client('s3')
+ses_client = boto3.client('ses')
+
+# Environment variables for Lambda
+BUCKET_NAME = os.environ.get('BUCKET_NAME')      # S3 bucket name
+RECIPIENT_FILE = os.environ.get('RECIPIENT_FILE')  # CSV file in S3 with recipients
+EMAIL_SUBJECT = os.environ.get('EMAIL_SUBJECT', 'Test Email')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL')      # Verified SES sender email
+EMAIL_BODY_FILE = os.environ.get('EMAIL_BODY_FILE') # Email body file in S3
+
+def lambda_handler(event, context):
+    # Get email body from S3
+    body_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=EMAIL_BODY_FILE)
+    email_body = body_obj['Body'].read().decode('utf-8')
+
+    # Get recipients list from S3
+    recipients_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=RECIPIENT_FILE)
+    recipients_csv = recipients_obj['Body'].read().decode('utf-8').splitlines()
+    recipients = [row for row in csv.reader(recipients_csv)][0]  # Assumes single row of emails
+
+    # Send email via SES to each recipient
+    for recipient in recipients:
+        ses_client.send_email(
+            Source=SENDER_EMAIL,
+            Destination={'ToAddresses': [recipient]},
+            Message={
+                'Subject': {'Data': EMAIL_SUBJECT},
+                'Body': {'Text': {'Data': email_body}}
+            }
+        )
+
+    return {
+        'statusCode': 200,
+        'body': f"Emails sent to {len(recipients)} recipients."
+    }
